@@ -1,4 +1,4 @@
-package main
+package sdmiddleware
 
 type Broker struct {
 	topics           map[EquipmentName]Topic

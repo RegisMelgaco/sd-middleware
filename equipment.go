@@ -1,4 +1,4 @@
-package main
+package sdmiddleware
 
 import (
 	"errors"
@@ -11,17 +11,40 @@ type (
 )
 type EquipmentName string
 
+type Equipment struct {
+	Sensor
+	Name     EquipmentName
+	Interval time.Duration
+}
+
 type Sensor struct {
 	Monitor
 	Max Measurement
 	Min Measurement
 }
 
-type Equipment struct {
-	Name EquipmentName
-	Sensor
-	IsOn     bool
-	Interval time.Duration
+func (e Equipment) Run() (end func() error) {
+	wait := make(chan bool)
+	err := make(chan error, 1)
+
+	go func() {
+		for {
+			switch {
+			case <-wait:
+				close(err)
+				break
+			default:
+				time.Sleep(e.Interval)
+
+				m := e.Sensor.Read()
+				e.Sensor.Monitor.OnRead(m)
+			}
+		}
+	}()
+
+	return func() error {
+		close(wait)
+	}
 }
 
 func (s Sensor) Read() Measurement {

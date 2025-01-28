@@ -1,4 +1,4 @@
-package main
+package sdmiddleware
 
 type GE struct {
 	Addr       string
