@@ -2,18 +2,22 @@ package sdmiddleware
 
 import (
 	"errors"
+	"fmt"
+	"log/slog"
 	"math/rand"
+	"net"
+	"net/textproto"
 	"time"
 )
 
 type (
-	Measurement float32
+	Measurement float64
 )
 type EquipmentName string
 
 type Equipment struct {
+	Name EquipmentName
 	Sensor
-	Name     EquipmentName
 	Interval time.Duration
 }
 
@@ -23,50 +27,44 @@ type Sensor struct {
 	Min Measurement
 }
 
-func (e Equipment) Run() (end func() error) {
-	wait := make(chan bool)
-	err := make(chan error, 1)
+func (e Equipment) Run() {
+	for {
+		time.Sleep(e.Interval)
 
-	go func() {
-		for {
-			switch {
-			case <-wait:
-				close(err)
-				break
-			default:
-				time.Sleep(e.Interval)
+		m := e.Read()
 
-				m := e.Sensor.Read()
-				e.Sensor.Monitor.OnRead(m)
-			}
-		}
-	}()
-
-	return func() error {
-		close(wait)
+		e.Avaluate(m)
 	}
 }
 
 func (s Sensor) Read() Measurement {
 	readingRange := s.Max - s.Min
-	r := Measurement(rand.Float32())
+	r := Measurement(rand.Float64())
 
 	return (r * readingRange) + s.Min
 }
 
 type Monitor struct {
-	broker BrokerClient
+	Broker BrokerClient
 	Max    Measurement
 	Min    Measurement
 }
 
-func (m Monitor) OnRead(v Measurement) {
+func (m Monitor) Avaluate(v Measurement) {
+	slog.Info("Monitor is evaluating", slog.Float64("measument", float64(v)))
+
+	var err error
 	if v >= m.Max {
-		m.broker.Send(ErrMaxMeasument)
+		err = ErrMaxMeasument
 	}
 
 	if v <= m.Min {
-		m.broker.Send(ErrMinMeasument)
+		err = ErrMinMeasument
+	}
+
+	if err != nil {
+		msg := fmt.Sprintf("%s: reading=%v", err.Error(), v)
+		m.Broker.Send(msg)
 	}
 }
 
@@ -80,6 +78,18 @@ type BrokerClient struct {
 	Equipment  EquipmentName
 }
 
-func (bc BrokerClient) Send(err error) {
-	panic("implement me")
+func (bc BrokerClient) Send(msg string) {
+	slog.Info("sending message do broker", slog.String("msg", msg))
+
+	conn, err := net.Dial("tcp", bc.BrokerAddr)
+	if err != nil {
+		slog.Error("failed to create connection to broker", slog.String("err", err.Error()))
+
+		panic("conn err not implemented")
+	}
+
+	err = textproto.NewConn(conn).PrintfLine("%s||%s", bc.Equipment, msg)
+	if err != nil {
+		panic(fmt.Errorf("failed to write on connection: %w", err))
+	}
 }
