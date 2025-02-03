@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
-	"net"
-	"net/textproto"
 	"time"
 )
 
@@ -16,13 +14,11 @@ type (
 type EquipmentName string
 
 type Equipment struct {
-	Name EquipmentName
-	Sensor
+	Monitor
 	Interval time.Duration
 }
 
 type Sensor struct {
-	Monitor
 	Max Measurement
 	Min Measurement
 }
@@ -45,9 +41,11 @@ func (s Sensor) Read() Measurement {
 }
 
 type Monitor struct {
+	Sensor
 	Broker BrokerClient
 	Max    Measurement
 	Min    Measurement
+	Name   EquipmentName
 }
 
 func (m Monitor) Avaluate(v Measurement) {
@@ -64,7 +62,7 @@ func (m Monitor) Avaluate(v Measurement) {
 
 	if err != nil {
 		msg := fmt.Sprintf("%s: reading=%v", err.Error(), v)
-		m.Broker.Send(msg)
+		m.Broker.Send(string(m.Name), msg)
 	}
 }
 
@@ -72,24 +70,3 @@ var (
 	ErrMaxMeasument = errors.New("measument is higher than allowed range")
 	ErrMinMeasument = errors.New("measument is lower than allowed range")
 )
-
-type BrokerClient struct {
-	BrokerAddr string
-	Equipment  EquipmentName
-}
-
-func (bc BrokerClient) Send(msg string) {
-	slog.Info("sending message do broker", slog.String("msg", msg))
-
-	conn, err := net.Dial("tcp", bc.BrokerAddr)
-	if err != nil {
-		slog.Error("failed to create connection to broker", slog.String("err", err.Error()))
-
-		panic("conn err not implemented")
-	}
-
-	err = textproto.NewConn(conn).PrintfLine("%s||%s", bc.Equipment, msg)
-	if err != nil {
-		panic(fmt.Errorf("failed to write on connection: %w", err))
-	}
-}

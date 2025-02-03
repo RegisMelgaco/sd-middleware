@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"net/textproto"
+	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -22,10 +24,31 @@ type Broker struct {
 
 type Topic struct {
 	Name EquipmentName
-	Msgs []string
+	Msgs []Msg
 }
 
-func (b *Broker) ListenMeasurements() (end chan bool) {
+type Msg struct {
+	ID    ID
+	Value string
+}
+
+type ID int
+
+var (
+	newIDMux  sync.Mutex
+	idCounter int
+)
+
+func newID() ID {
+	newIDMux.Lock()
+	defer newIDMux.Unlock()
+
+	defer func() { idCounter += 1 }()
+
+	return ID(idCounter)
+}
+
+func (b *Broker) ListenEquipments() (end chan bool) {
 	end = make(chan bool)
 
 	go func() {
@@ -44,14 +67,14 @@ func (b *Broker) ListenMeasurements() (end chan bool) {
 				panic(err)
 			}
 
-			go b.handleNewMeasuments(conn)
+			go b.handleNewMsg(conn)
 		}
 	}()
 
 	return end
 }
 
-func (b *Broker) handleNewMeasuments(c net.Conn) {
+func (b *Broker) handleNewMsg(c net.Conn) {
 	defer c.Close()
 
 	conn := textproto.NewConn(c)
@@ -101,10 +124,13 @@ func (b *Broker) appendMsg(equipment EquipmentName, msg string) {
 
 	topic, ok := b.topics[equipment]
 	if !ok {
-		topic = Topic{Name: equipment, Msgs: []string{}}
+		topic = Topic{Name: equipment, Msgs: []Msg{}}
 	}
 
-	topic.Msgs = append(topic.Msgs, msg)
+	topic.Msgs = append(topic.Msgs, Msg{
+		ID:    newID(),
+		Value: msg,
+	})
 
 	b.topics[equipment] = topic
 
@@ -117,7 +143,8 @@ func (b *Broker) ListenGE() (end chan bool) {
 		defer func() { close(end) }()
 
 		mux := http.NewServeMux()
-		mux.Handle("GET /measurement", http.HandlerFunc(b.handleListMeasuments))
+		mux.HandleFunc("/topics", b.handleListMsgs)
+		mux.HandleFunc("DELETE /topics/{id}", b.handleDeleteMsg)
 
 		err := http.ListenAndServe(b.GEAddr, mux)
 		if err != nil {
@@ -129,10 +156,101 @@ func (b *Broker) ListenGE() (end chan bool) {
 	return end
 }
 
-func (b *Broker) handleListMeasuments(w http.ResponseWriter, r *http.Request) {
-	err := json.NewEncoder(w).Encode(b.topics)
+func (b *Broker) handleListMsgs(w http.ResponseWriter, r *http.Request) {
+	topics := make([]Topic, 0, len(b.topics))
+	for _, t := range b.topics {
+		topics = append(topics, t)
+	}
+
+	err := json.NewEncoder(w).Encode(topics)
 	if err != nil {
-		err = fmt.Errorf("marshalling measuments: %w", err)
+		err = fmt.Errorf("marshalling topics: %w", err)
+		panic(err)
+	}
+}
+
+func (b *Broker) handleDeleteMsg(_ http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		err = fmt.Errorf("parse id from path: %w: id=%v", err, r.PathValue("id"))
+		panic(err)
+	}
+
+	for ti, topic := range b.topics {
+		for mi, msg := range topic.Msgs {
+			if msg.ID == ID(id) {
+				topic.Msgs = append(topic.Msgs[:mi], topic.Msgs[mi+1:]...)
+				b.topics[ti] = topic
+
+				slog.Info("deleted message", slog.Any("topics", b.topics))
+
+				return
+			}
+		}
+	}
+}
+
+type BrokerClient struct {
+	BrokerAddr string
+}
+
+func (bc BrokerClient) Send(equipment, msg string) {
+	slog.Info("sending message do broker", slog.String("msg", msg))
+
+	conn, err := net.Dial("tcp", bc.BrokerAddr)
+	if err != nil {
+		slog.Error("failed to create connection to broker", slog.String("err", err.Error()))
+
+		panic("conn err not implemented")
+	}
+
+	defer conn.Close()
+
+	err = textproto.NewConn(conn).PrintfLine("%s||%s", equipment, msg)
+	if err != nil {
+		panic(fmt.Errorf("failed to write on connection: %w", err))
+	}
+}
+
+func (bc BrokerClient) List() []Topic {
+	url := url.URL{
+		Scheme: "http",
+		Host:   bc.BrokerAddr,
+		Path:   "/topics",
+	}
+
+	resp, err := http.Get(url.String())
+	if err != nil {
+		err := fmt.Errorf("requesting topics: %w", err)
+		panic(err)
+	}
+
+	var topics []Topic
+	err = json.NewDecoder(resp.Body).Decode(&topics)
+	if err != nil {
+		err = fmt.Errorf("decode topics list: %w", err)
+		panic(err)
+	}
+
+	return topics
+}
+
+func (bc BrokerClient) Delete(id ID) {
+	url := url.URL{
+		Scheme: "http",
+		Host:   bc.BrokerAddr,
+		Path:   fmt.Sprintf("/topics/%d", id),
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, url.String(), nil)
+	if err != nil {
+		err = fmt.Errorf("creating delete msg request: %w", err)
+		panic(err)
+	}
+
+	_, err = http.DefaultClient.Do(req)
+	if err != nil {
+		err := fmt.Errorf("requesting topics: %w", err)
 		panic(err)
 	}
 }

@@ -22,8 +22,8 @@ func main() {
 	slog.Info("starting")
 
 	endGE := b.ListenGE()
-	endM := b.ListenMeasurements()
+	endE := b.ListenEquipments()
 
 	<-endGE
-	<-endM
+	<-endE
 }

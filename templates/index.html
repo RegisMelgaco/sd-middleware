@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+
+<html lang="pt">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <title>GE</title>
+
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <link href="https://cdn.jsdelivr.net/npm/modern-normalize@v3.0.1
+/modern-normalize.min.css" rel="stylesheet">
+
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+  <link rel="icon" href="favicon.png">
+
+</head>
+
+<body>
+
+  <header>
+
+    <h1>Gerenciador de Equipamentos</h1>
+
+  </header>
+
+  <nav></nav>
+
+  <main>
+
+    <section>
+      <h2>Alertas</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <td>ID</td>
+            <td>Equipamento</td>
+            <td>Mensagem</td>
+          </tr>
+        </thead>
+          <tbody
+            hx-get="/messages"
+            hx-trigger="every 1s"
+            hx-swap="innerHTML">
+          </tbody>
+      </table>
+    </section>
+
+    <section></section>
+
+    <section></section>
+
+  </main>
+
+  <footer></footer>
+
+</body>
+
+</html>
+
+<style>
+body {
+  margin: 2rem;
+}
+
+th, td {
+  padding: 1rem;
+}
+</style>

@@ -20,18 +20,15 @@ func main() {
 	flag.Parse()
 
 	eq := sdmiddleware.Equipment{
-		Name: sdmiddleware.EquipmentName(*equipName),
-		Sensor: sdmiddleware.Sensor{
-			Monitor: sdmiddleware.Monitor{
-				Broker: sdmiddleware.BrokerClient{
-					BrokerAddr: *brokerAddr,
-					Equipment:  sdmiddleware.EquipmentName(*equipName),
-				},
+		Monitor: sdmiddleware.Monitor{
+			Name: sdmiddleware.EquipmentName(*equipName),
+			Broker: sdmiddleware.BrokerClient{
+				BrokerAddr: *brokerAddr,
+			},
+			Sensor: sdmiddleware.Sensor{
 				Max: sdmiddleware.Measurement(*monitorMax),
 				Min: sdmiddleware.Measurement(*monitorMin),
 			},
-			Max: sdmiddleware.Measurement(*sensorMax),
-			Min: sdmiddleware.Measurement(*sensorMin),
 		},
 		Interval: *equipInterval,
 	}
