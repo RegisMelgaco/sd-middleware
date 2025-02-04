@@ -33,12 +33,11 @@
 
     <h2>Tópicos</h2>
 
-    <section>
-      <content
-         hx-get="/messages"
-         hx-trigger="every 1s"
-         hx-swap="innerHTML">
-    </section>
+    <content
+      class="topics"    
+      hx-get="/messages"
+      hx-trigger="every 1s"
+      hx-swap="innerHTML">
 
   </main>
 
@@ -55,5 +54,9 @@ body {
 
 th, td {
   padding: 1rem;
+}
+
+.topics {
+  display: flex;
 }
 </style>
