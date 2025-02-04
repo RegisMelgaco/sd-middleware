@@ -23,14 +23,25 @@ type Sensor struct {
 	Min Measurement
 }
 
-func (e Equipment) Run() {
-	for {
-		time.Sleep(e.Interval)
-
-		m := e.Read()
-
-		e.Avaluate(m)
+func (e Equipment) Run() (stop func(bool)) {
+	isStopped := false
+	stop = func(s bool) {
+		isStopped = s
 	}
+
+	go func() {
+		for {
+			if !isStopped {
+				m := e.Read()
+
+				e.Avaluate(m)
+
+				time.Sleep(e.Interval)
+			}
+		}
+	}()
+
+	return stop
 }
 
 func (s Sensor) Read() Measurement {

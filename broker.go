@@ -195,8 +195,6 @@ type BrokerClient struct {
 }
 
 func (bc BrokerClient) Send(equipment, msg string) {
-	slog.Info("sending message do broker", slog.String("msg", msg))
-
 	conn, err := net.Dial("tcp", bc.BrokerAddr)
 	if err != nil {
 		slog.Error("failed to create connection to broker", slog.String("err", err.Error()))

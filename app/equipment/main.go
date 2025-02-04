@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"local/sdmiddleware"
 	"time"
 )
@@ -12,7 +13,7 @@ var (
 	monitorMin    = flag.Float64("alert-floor", 1, "")
 	sensorMax     = flag.Float64("sensor-ceiling", 3, "")
 	sensorMin     = flag.Float64("sensor-floor", 0, "")
-	equipInterval = flag.Duration("interval", time.Second, "")
+	equipInterval = flag.Duration("interval", 3*time.Second, "")
 	brokerAddr    = flag.String("broker", "0.0.0.0:3000", "")
 )
 
@@ -33,5 +34,28 @@ func main() {
 		Interval: *equipInterval,
 	}
 
-	eq.Run()
+	stop := eq.Run()
+
+	for {
+		fmt.Print("Escolha uma opção:\n  1. Parar\n  2. Continuar\n  3. Encerrar\n\n")
+
+		var input string
+		_, err := fmt.Scanln(&input)
+		if err != nil {
+			err = fmt.Errorf("lendo entrada: %w", err)
+			panic(err)
+		}
+
+		switch input {
+		case "1":
+			stop(true)
+		case "2":
+			stop(false)
+		case "3":
+			fmt.Println("bye bye")
+			return
+		default:
+			fmt.Println("Opção desconhecida")
+		}
+	}
 }
