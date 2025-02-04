@@ -13,7 +13,7 @@ var (
 	monitorMin    = flag.Float64("alert-floor", 1, "")
 	sensorMax     = flag.Float64("sensor-ceiling", 3, "")
 	sensorMin     = flag.Float64("sensor-floor", 0, "")
-	equipInterval = flag.Duration("interval", 3*time.Second, "")
+	equipInterval = flag.Duration("interval", time.Second, "")
 	brokerAddr    = flag.String("broker", "0.0.0.0:3000", "")
 )
 
@@ -27,9 +27,11 @@ func main() {
 				BrokerAddr: *brokerAddr,
 			},
 			Sensor: sdmiddleware.Sensor{
-				Max: sdmiddleware.Measurement(*monitorMax),
-				Min: sdmiddleware.Measurement(*monitorMin),
+				Max: sdmiddleware.Measurement(*sensorMax),
+				Min: sdmiddleware.Measurement(*sensorMin),
 			},
+			Max: sdmiddleware.Measurement(*monitorMax),
+			Min: sdmiddleware.Measurement(*monitorMin),
 		},
 		Interval: *equipInterval,
 	}
