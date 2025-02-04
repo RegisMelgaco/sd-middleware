@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -162,6 +163,10 @@ func (b *Broker) handleListMsgs(w http.ResponseWriter, r *http.Request) {
 		topics = append(topics, t)
 	}
 
+	slices.SortFunc(topics, func(first, second Topic) int {
+		return strings.Compare(string(first.Name), string(second.Name))
+	})
+
 	err := json.NewEncoder(w).Encode(topics)
 	if err != nil {
 		err = fmt.Errorf("marshalling topics: %w", err)
@@ -170,19 +175,22 @@ func (b *Broker) handleListMsgs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Broker) handleDeleteMsg(_ http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil {
-		err = fmt.Errorf("parse id from path: %w: id=%v", err, r.PathValue("id"))
-		panic(err)
-	}
+	key := r.PathValue("id")
+	id, err := strconv.Atoi(key)
 
 	for ti, topic := range b.topics {
+		if err != nil {
+			if key == string(topic.Name) {
+				delete(b.topics, ti)
+			}
+
+			continue
+		}
+
 		for mi, msg := range topic.Msgs {
 			if msg.ID == ID(id) {
 				topic.Msgs = append(topic.Msgs[:mi], topic.Msgs[mi+1:]...)
 				b.topics[ti] = topic
-
-				slog.Info("deleted message", slog.Any("topics", b.topics))
 
 				return
 			}
@@ -233,11 +241,11 @@ func (bc BrokerClient) List() []Topic {
 	return topics
 }
 
-func (bc BrokerClient) Delete(id ID) {
+func (bc BrokerClient) Delete(id string) {
 	url := url.URL{
 		Scheme: "http",
 		Host:   bc.BrokerAddr,
-		Path:   fmt.Sprintf("/topics/%d", id),
+		Path:   fmt.Sprintf("/topics/%s", id),
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, url.String(), nil)

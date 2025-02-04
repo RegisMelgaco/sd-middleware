@@ -32,7 +32,7 @@ func (e Equipment) Run() (stop func(bool)) {
 	go func() {
 		for {
 			if !isStopped {
-				m := e.Read()
+				m := e.Sensor.Read()
 
 				e.Avaluate(m)
 
@@ -52,7 +52,7 @@ func (s Sensor) Read() Measurement {
 }
 
 type Monitor struct {
-	Sensor
+	Sensor Sensor
 	Broker BrokerClient
 	Max    Measurement
 	Min    Measurement
@@ -72,7 +72,7 @@ func (m Monitor) Avaluate(v Measurement) {
 	}
 
 	if err != nil {
-		msg := fmt.Sprintf("%s: reading=%v", err.Error(), v)
+		msg := fmt.Sprintf("leitura: %v", v)
 		m.Broker.Send(string(m.Name), msg)
 	}
 }

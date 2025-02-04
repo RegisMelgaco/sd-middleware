@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"strconv"
 	"sync"
 )
 
@@ -64,11 +63,5 @@ var msgsTmpl = sync.OnceValue(func() *template.Template {
 })
 
 func (g GE) handleDeleteMsg(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil {
-		err = fmt.Errorf("parse id from path: %w: id=%v", err, r.PathValue("id"))
-		panic(err)
-	}
-
-	g.Broker.Delete(ID(id))
+	g.Broker.Delete(r.PathValue("id"))
 }

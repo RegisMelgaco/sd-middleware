@@ -1,13 +1,23 @@
 {{ range . }}
-{{ $name := .Name }}
-{{ range .Msgs }}
-<tr>
-  <td>{{ .ID }}</td>
-  <td>{{ $name }}</td>
-  <td>{{ .Value }}</td>
-  <td><a hx-delete="/messages/{{ .ID }}" hx-swap="none">delete</a></td>
-</tr>
-{{ end }}
+<h3>{{ .Name }}</h3>
+<table>
+  <thead>
+    <tr>
+      <td>ID</td>
+      <td>Mensagem</td>
+      <td><a hx-delete="/messages/{{ .Name }}" hx-swap="none">deletar tópico</a></td>
+    </tr>
+  </thead>
+    <tbody>
+    {{ range .Msgs }}
+    <tr>
+      <td>{{ .ID }}</td>
+      <td>{{ .Value }}</td>
+      <td><a hx-delete="/messages/{{ .ID }}" hx-swap="none">deletar</a></td>
+    </tr>
+    {{ end }}
+    </tbody>
+</table>
 {{ end }}
 
 <style>

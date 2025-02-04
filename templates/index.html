@@ -31,28 +31,14 @@
 
   <main>
 
+    <h2>Tópicos</h2>
+
     <section>
-      <h2>Alertas</h2>
-
-      <table>
-        <thead>
-          <tr>
-            <td>ID</td>
-            <td>Equipamento</td>
-            <td>Mensagem</td>
-          </tr>
-        </thead>
-          <tbody
-            hx-get="/messages"
-            hx-trigger="every 1s"
-            hx-swap="innerHTML">
-          </tbody>
-      </table>
+      <content
+         hx-get="/messages"
+         hx-trigger="every 1s"
+         hx-swap="innerHTML">
     </section>
-
-    <section></section>
-
-    <section></section>
 
   </main>
 
